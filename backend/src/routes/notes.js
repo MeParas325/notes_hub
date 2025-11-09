@@ -11,9 +11,14 @@ const notes_router = express.Router();
 // memory storage (for buffer)
 const upload = multer({ storage: multer.memoryStorage() });
 
-
 // upload routes
-notes_router.post("/upload/video", userAuth,  NotesController.uploadVideo);
-notes_router.post("/upload/pdf", userAuth, upload.single("pdf"),  NotesController.uploadPDF);
+notes_router.post("/upload/video",  NotesController.uploadVideo);
+notes_router.post("/upload/pdf", upload.single("pdf"),  NotesController.uploadPDF);
+
+// download notes
+notes_router.get("/download/pdf/:id", NotesController.downloadPDF);
+
+// get notes
+notes_router.get("/", NotesController.getNotes);
 
 export default notes_router;
