@@ -2,7 +2,7 @@
 import express from "express";
 
 // file imports
-import AuthController from "../controllers/auth.js";
+import AuthController from "../controllers/auth.controller.js";
 
 // setup auth router
 const auth_router = express.Router();

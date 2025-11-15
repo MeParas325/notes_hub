@@ -10,7 +10,6 @@ import mongoose from "mongoose";
 import logger from "../utils/logger.js";
 
 class NotesController {
-
   // upload video
   static uploadVideo = async (req, res) => {
     // start the transaction
@@ -162,7 +161,6 @@ class NotesController {
         data: pdf,
       });
     } catch (err) {
-
       await session.abortTransaction();
       logger.error("Error while uploading PDF: ", err.message);
       res.status(400).json({
@@ -232,11 +230,10 @@ class NotesController {
         return download_stream.pipe(res);
       }
 
-       // 4️⃣ Neither buffer nor GridFS → invalid data
+      // 4️⃣ Neither buffer nor GridFS → invalid data
       return res.status(404).json({
         message: "❌ PDF data not found in database.",
       });
-
     } catch (err) {
       logger.error("Error while downloading: ", err.message);
       res.status(400).json({
@@ -246,27 +243,160 @@ class NotesController {
     }
   };
 
-  // get notes
-  static getNotes = async(req, res) => {
-
+  // get video notes
+  static getVideoNotes = async (req, res) => {
     try {
+      // get the filters from the query
+      const { username, tags, search, page = 1, limit = 10 } = req.query;
+
+      console.log("Username is: ", username);
+      console.log("Username length is: ", username.length);
+
+      // set the filter object
+      let filter = {};
+
+      // check if username exist or not
+      if (username) {
+        // check if user exist with this username
+        const user = await User.findOne({ username }, "_id");
+        if (user) {
+          filter.uploaded_by = user._id;
+        } else {
+          // send back the response
+          return res.status(200).json({
+            message: "No results found",
+            success: true,
+            data: [],
+          });
+        }
+      }
+
+      // check the validity of tags
+      const is_tag_array = Array.isArray(tags);
+      if (is_tag_array && tags.length > 0) {
+        filter.tags = { $in: tags };
+      } else if (!is_tag_array && tags) {
+        filter.tags = tags;
+      }
+
+      // check the validity of search
+      if (search) {
+        filter.title = {
+          $regex: search.trim(),
+          $options: "i",
+        };
+      }
+
+      // pagination maths
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      console.log("Above video notes");
 
       // get video notes
-      const video_notes = await VideoNote.find();
+      const video_notes = await VideoNote.find(
+        filter,
+        "title video_link uploaded_by tags createdAt"
+      )
+        .populate("uploaded_by", "username")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber);
 
-      // get PDF notes
-      const pdf_notes = await PDFNote.find();
+      console.log("Videos notes are: ", video_notes);
 
-      
-      
+      // send back the response
+      return res.status(200).json({
+        message: "Videos notes fetched successfully",
+        success: true,
+        current_page: pageNumber,
+        limit: limitNumber,
+        total_items: video_notes.length,
+        total_pages: Math.ceil(total_count / limitNumber),
+        data: video_notes,
+      });
     } catch (err) {
-      logger.error("Error while fetching notes: ", err.message);
+      logger.error("Error while fetching video notes: ", err.message);
       res.status(400).json({
-        message: "Error while fetching notes",
-        success: false
-      })
+        message: "Error while fetching videos",
+        success: false,
+      });
     }
-  }
+  };
+
+  // get pdf notes
+  static getPDFNotes = async (req, res) => {
+    try {
+      // get the filters from the query
+      const { username, tags, search, page = 1, limit = 10 } = req.query;
+
+      // set filters
+      let filter = {};
+
+      // filter by username
+      if (username) {
+        const user = await User.findOne({ username }, "_id");
+        if (user) {
+          filter.uploaded_by = user._id;
+        } else {
+          return res.status(200).json({
+            message: "No results found",
+            success: true,
+            data: [],
+          });
+        }
+      }
+
+      // filter by tags
+      const is_tag_array = Array.isArray(tags);
+      if (is_tag_array && tags.length > 0) {
+        filter.tags = { $in: tags };
+      } else if (!is_tag_array && tags) {
+        filter.tags = tags;
+      }
+
+      // filter by search
+      if (search) {
+        filter.title = {
+          $regex: search.trim(),
+          $options: "i",
+        };
+      }
+
+      // pagination
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // get pdf notes
+      const pdf_notes = await PDFNote.find(
+        filter,
+        "title uploaded_by tags createdAt"
+      )
+        .populate("uploaded_by", "username")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber);
+
+      // send response
+      res.status(200).json({
+        message: "PDF notes fetched successfully",
+        success: true,
+        current_page: pageNumber,
+        limit: limitNumber,
+        total_items: pdf_notes.length,
+        total_pages: Math.ceil(total_count / limitNumber),
+        data: pdf_notes,
+      });
+    } catch (err) {
+      logger.error("Error while fetching PDF notes: ", err.message);
+      res.status(400).json({
+        message: "Error while fetching PDF notes",
+        success: false,
+      });
+    }
+  };
 }
 
 export default NotesController;

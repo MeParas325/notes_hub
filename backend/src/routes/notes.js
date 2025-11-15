@@ -3,8 +3,7 @@ import express from "express";
 import multer from "multer";
 
 // file imports
-import NotesController from "../controllers/notes.js";
-import userAuth from "../middlewares/auth.js"
+import NotesController from "../controllers/notes.controller.js";
 
 const notes_router = express.Router();
 
@@ -18,7 +17,9 @@ notes_router.post("/upload/pdf", upload.single("pdf"),  NotesController.uploadPD
 // download notes
 notes_router.get("/download/pdf/:id", NotesController.downloadPDF);
 
-// get notes
-notes_router.get("/", NotesController.getNotes);
+// get video notes
+notes_router.get("/video", NotesController.getVideoNotes);
+// get pdf notes
+notes_router.get("/pdf", NotesController.getPDFNotes);
 
 export default notes_router;
